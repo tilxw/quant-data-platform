@@ -1,0 +1,5 @@
+# 家具级决策：用 requirements.txt 管依赖（而非 pyproject.toml 打包），
+# 因为本项目是应用不是发布的库，pip install -r 一条命令即可复现环境。
+duckdb>=1.5
+pandas>=2.2
+pytest>=8.0

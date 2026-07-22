@@ -1,0 +1,22 @@
+# 背景/交接文档，一律不入库
+项目蓝图与协作契约.md
+*交接*.md
+*背景*.md
+
+# 虚拟环境
+.venv/
+
+# 数据文件（数据库、下载的行情等）
+data/
+*.duckdb
+*.duckdb.wal
+*.csv
+*.parquet
+
+# Python 运行产物
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# macOS
+.DS_Store

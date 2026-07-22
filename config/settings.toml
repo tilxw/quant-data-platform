@@ -1,0 +1,11 @@
+# 项目配置
+# 家具级决策：用 TOML 而非 YAML/JSON——Python 3.11+ 标准库 tomllib
+# 原生解析（零依赖），且支持注释。
+
+[storage]
+# 数据库文件路径（相对项目根目录）
+db_path = "data/quant.duckdb"
+
+[universe]
+# 股票池：沪深300成分股（用户拍板，架构上可扩全A）
+index_code = "000300"
