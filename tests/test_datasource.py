@@ -50,6 +50,24 @@ def test_compute_hfq_factors():
     assert out["hfq_factor"].tolist() == [10.0, 15.0]  # 105/10.5, 165/11.0
 
 
+def test_normalize_sina_bars_keeps_volume_unit():
+    """新浪 volume 单位已是股，不能再乘 100。"""
+    from qdp.datasource import _sina_symbol, normalize_sina_bars
+
+    raw = pd.DataFrame({
+        "date": ["2026-07-22"],
+        "open": [3.11], "high": [3.22], "low": [3.09], "close": [3.19],
+        "volume": [163572262.0], "amount": [517044810.0],
+        "outstanding_share": [9.7e9], "turnover": [0.0168],  # 多余列应被丢弃
+    })
+    df = normalize_sina_bars(raw, "2")
+    assert list(df.columns) == BAR_COLUMNS
+    assert df["symbol"].iloc[0] == "000002"
+    assert df["volume"].iloc[0] == 163572262
+    assert _sina_symbol("600519") == "sh600519"
+    assert _sina_symbol("2") == "sz000002"
+
+
 def test_call_with_retry_recovers_after_transient_failure():
     calls = {"n": 0}
 

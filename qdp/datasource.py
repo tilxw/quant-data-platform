@@ -135,6 +135,74 @@ def fetch_hfq_close(symbol: str, start: date, end: date) -> pd.DataFrame:
     return df
 
 
+# ---------------- 备用行情源：新浪（东财被限频时切换） ----------------
+
+_SINA_BAR_COLUMNS = ["date", "open", "high", "low", "close", "volume", "amount"]
+
+
+def _sina_symbol(symbol: str) -> str:
+    """新浪代码格式：sh600000 / sz000001。"""
+    symbol = str(symbol).zfill(6)
+    return ("sh" if symbol.startswith("6") else "sz") + symbol
+
+
+def normalize_sina_bars(raw: pd.DataFrame, symbol: str) -> pd.DataFrame:
+    """新浪日线原始表 → daily_bar 表结构。注意：新浪 volume 单位已是股，不乘 100。"""
+    missing = set(_SINA_BAR_COLUMNS) - set(raw.columns)
+    if missing:
+        raise DataSourceError(f"{symbol} 新浪日线缺少列 {sorted(missing)}，akshare 可能改了接口")
+    df = raw[_SINA_BAR_COLUMNS].rename(columns={"date": "trade_date"}).copy()
+    df["symbol"] = str(symbol).zfill(6)
+    df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
+    df["volume"] = df["volume"].astype("float64").round().astype("int64")
+    return df[BAR_COLUMNS]
+
+
+def fetch_daily_bars_sina(symbol: str, start: date, end: date) -> pd.DataFrame:
+    """新浪源：不复权日线。"""
+    import akshare as ak
+
+    raw = call_with_retry(
+        lambda: ak.stock_zh_a_daily(
+            symbol=_sina_symbol(symbol),
+            start_date=start.strftime("%Y%m%d"), end_date=end.strftime("%Y%m%d"),
+            adjust="",
+        ),
+        what=f"{symbol} 不复权日线(新浪)",
+    )
+    if raw is None or raw.empty:
+        return pd.DataFrame(columns=BAR_COLUMNS)
+    return normalize_sina_bars(raw, symbol)
+
+
+def fetch_hfq_close_sina(symbol: str, start: date, end: date) -> pd.DataFrame:
+    """新浪源：后复权收盘价（推导复权因子用）。"""
+    import akshare as ak
+
+    raw = call_with_retry(
+        lambda: ak.stock_zh_a_daily(
+            symbol=_sina_symbol(symbol),
+            start_date=start.strftime("%Y%m%d"), end_date=end.strftime("%Y%m%d"),
+            adjust="hfq",
+        ),
+        what=f"{symbol} 后复权日线(新浪)",
+    )
+    if raw is None or raw.empty:
+        return pd.DataFrame(columns=["trade_date", "hfq_close"])
+    if "date" not in raw.columns or "close" not in raw.columns:
+        raise DataSourceError(f"{symbol} 新浪后复权日线缺少 date/close 列")
+    df = raw[["date", "close"]].rename(columns={"date": "trade_date", "close": "hfq_close"}).copy()
+    df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
+    return df
+
+
+# 可选行情源注册表：值为 (日线抓取函数, 后复权收盘抓取函数)
+BAR_SOURCES = {
+    "eastmoney": (fetch_daily_bars, fetch_hfq_close),
+    "sina": (fetch_daily_bars_sina, fetch_hfq_close_sina),
+}
+
+
 def fetch_trade_calendar() -> pd.DataFrame:
     """全部 A 股交易日（新浪工具接口，1990 年至今年年底）。"""
     import akshare as ak
@@ -148,16 +216,20 @@ def fetch_trade_calendar() -> pd.DataFrame:
     })
 
 
-def fetch_hs300_universe() -> pd.DataFrame:
-    """沪深300当前成分股名单（中证指数官网接口）。"""
+def fetch_index_universe(index_code: str = "000300") -> pd.DataFrame:
+    """指数当前成分股名单（中证指数官网接口）。
+
+    index_code：000300 沪深300、000905 中证500……由配置 universe.index_code 传入，
+    不在这里写死——配置必须接线才算生效。
+    """
     import akshare as ak
 
     raw = call_with_retry(
-        lambda: ak.index_stock_cons_csindex(symbol="000300"),
-        what="沪深300成分股",
+        lambda: ak.index_stock_cons_csindex(symbol=index_code),
+        what=f"指数 {index_code} 成分股",
     )
     if raw is None or raw.empty or "成分券代码" not in raw.columns:
-        raise DataSourceError("沪深300成分股返回异常，akshare 可能改了接口")
+        raise DataSourceError(f"指数 {index_code} 成分股返回异常，akshare 可能改了接口")
     symbols = raw["成分券代码"].astype(str).str.zfill(6)
     return pd.DataFrame({
         "symbol": symbols,

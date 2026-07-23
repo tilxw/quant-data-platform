@@ -15,7 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from functools import partial
+
 from qdp.config import load_settings
+from qdp.datasource import BAR_SOURCES, fetch_index_universe
 from qdp.db import connect, init_schema
 from qdp.ingest import IngestError, run_update
 from qdp.log import setup_logging
@@ -31,13 +34,19 @@ def main() -> int:
         "--sleep", type=float,
         help="覆盖配置的请求间隔秒数（首次全量灌库建议 1.0，宁慢勿封）",
     )
+    parser.add_argument(
+        "--source", choices=sorted(BAR_SOURCES), default="eastmoney",
+        help="行情源（默认东财；被限频时可切 sina）",
+    )
     args = parser.parse_args()
 
     setup_logging()
     settings = load_settings()
     conn = connect(settings.db_path)
+    fetch_bars, fetch_hfq = BAR_SOURCES[args.source]
     try:
         init_schema(conn)  # 幂等，确保表存在
+        logger.info("行情源：%s", args.source)
         report = run_update(
             conn,
             default_start=settings.start_date,
@@ -45,6 +54,10 @@ def main() -> int:
             max_fail_ratio=settings.max_fail_ratio,
             symbols=args.symbols.split(",") if args.symbols else None,
             limit=args.limit,
+            # 股票池指数代码从配置接线传入（改池子只改 settings.toml）
+            fetch_universe=partial(fetch_index_universe, settings.index_code),
+            fetch_bars=fetch_bars,
+            fetch_hfq=fetch_hfq,
         )
     except IngestError as exc:
         logger.error("更新中止：%s", exc)

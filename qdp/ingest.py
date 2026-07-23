@@ -113,7 +113,7 @@ def run_update(
     symbols: Sequence[str] | None = None,
     limit: int | None = None,
     fetch_calendar=ds.fetch_trade_calendar,
-    fetch_universe=ds.fetch_hs300_universe,
+    fetch_universe=ds.fetch_index_universe,
     fetch_bars=ds.fetch_daily_bars,
     fetch_hfq=ds.fetch_hfq_close,
 ) -> UpdateReport:
@@ -131,9 +131,9 @@ def run_update(
     try:
         universe = fetch_universe()
         upsert(conn, "stock_basic", universe)
-        logger.info("沪深300成分股名单 %d 只已更新", len(universe))
+        logger.info("成分股名单 %d 只已更新", len(universe))
     except Exception as exc:
-        raise IngestError(f"沪深300成分股获取失败：{exc}") from exc
+        raise IngestError(f"成分股名单获取失败：{exc}") from exc
 
     todo = list(symbols) if symbols else universe["symbol"].tolist()
     if limit:
