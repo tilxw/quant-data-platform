@@ -3,3 +3,5 @@
 duckdb>=1.5
 pandas>=2.2
 pytest>=8.0
+# akshare 接口列名随上游变动较频繁，锁定下限为当前验证过的版本
+akshare>=1.18.75

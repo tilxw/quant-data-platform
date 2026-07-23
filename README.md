@@ -26,4 +26,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python scripts/init_db.py   # 建库建表（幂等，可重复执行）
 pytest                      # 跑单元测试
+
+python scripts/update_data.py --limit 5   # 冒烟：只采成分股前 5 只
+python scripts/update_data.py             # 全量增量更新（幂等，可随时重跑）
 ```
