@@ -44,3 +44,14 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
     is_open     BOOLEAN NOT NULL,   -- 是否交易日
     PRIMARY KEY (cal_date)
 );
+
+-- 质检结果：每次体检的逐项结论，报告可追溯、调度告警可直接查询
+CREATE TABLE IF NOT EXISTS qc_result (
+    run_ts      TIMESTAMP NOT NULL, -- 本次质检时间戳
+    check_name  VARCHAR NOT NULL,   -- freshness/completeness/factor_sanity/return_sanity/cross_source
+    symbol      VARCHAR NOT NULL,   -- 全局项固定为 'ALL'
+    level       VARCHAR NOT NULL,   -- INFO / WARN / ERROR
+    metric      DOUBLE,             -- 量化指标（缺口天数、异常天数等）
+    detail      VARCHAR NOT NULL,   -- 人读描述
+    PRIMARY KEY (run_ts, check_name, symbol)
+);

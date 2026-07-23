@@ -196,7 +196,65 @@ def fetch_hfq_close_sina(symbol: str, start: date, end: date) -> pd.DataFrame:
     return df
 
 
+# ---------------- 备用行情源：腾讯（第三独立源，对拍裁决用） ----------------
+
+_TX_BAR_COLUMNS = ["date", "open", "high", "low", "close", "volume", "amount"]
+
+
+def normalize_tx_bars(raw: pd.DataFrame, symbol: str) -> pd.DataFrame:
+    """腾讯日线原始表 → daily_bar 表结构。注意：腾讯 volume 单位是手，×100 转股。"""
+    missing = set(_TX_BAR_COLUMNS) - set(raw.columns)
+    if missing:
+        raise DataSourceError(f"{symbol} 腾讯日线缺少列 {sorted(missing)}，akshare 可能改了接口")
+    df = raw[_TX_BAR_COLUMNS].rename(columns={"date": "trade_date"}).copy()
+    df["symbol"] = str(symbol).zfill(6)
+    df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
+    df["volume"] = (df["volume"].astype("float64") * 100).round().astype("int64")
+    return df[BAR_COLUMNS]
+
+
+def fetch_daily_bars_tx(symbol: str, start: date, end: date) -> pd.DataFrame:
+    """腾讯源：不复权日线。"""
+    import akshare as ak
+
+    raw = call_with_retry(
+        lambda: ak.stock_zh_a_hist_tx(
+            symbol=_sina_symbol(symbol),  # 腾讯与新浪同用 sh/sz 前缀格式
+            start_date=start.strftime("%Y%m%d"), end_date=end.strftime("%Y%m%d"),
+            adjust="",
+        ),
+        what=f"{symbol} 不复权日线(腾讯)",
+    )
+    if raw is None or raw.empty:
+        return pd.DataFrame(columns=BAR_COLUMNS)
+    return normalize_tx_bars(raw, symbol)
+
+
+def fetch_hfq_close_tx(symbol: str, start: date, end: date) -> pd.DataFrame:
+    """腾讯源：后复权收盘价。"""
+    import akshare as ak
+
+    raw = call_with_retry(
+        lambda: ak.stock_zh_a_hist_tx(
+            symbol=_sina_symbol(symbol),
+            start_date=start.strftime("%Y%m%d"), end_date=end.strftime("%Y%m%d"),
+            adjust="hfq",
+        ),
+        what=f"{symbol} 后复权日线(腾讯)",
+    )
+    if raw is None or raw.empty:
+        return pd.DataFrame(columns=["trade_date", "hfq_close"])
+    if "date" not in raw.columns or "close" not in raw.columns:
+        raise DataSourceError(f"{symbol} 腾讯后复权日线缺少 date/close 列")
+    df = raw[["date", "close"]].rename(columns={"date": "trade_date", "close": "hfq_close"}).copy()
+    df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
+    return df
+
+
 # 可选行情源注册表：值为 (日线抓取函数, 后复权收盘抓取函数)
+# 腾讯源不注册：2026-07-23 对拍实测其后复权是"加法复权"流派（累计分红直接
+# 加回价格，日收益率被系统性压缩 ~0.8 倍），与东财/新浪的"乘法复权"不可比，
+# 因子推导会得到错误结果。fetch_*_tx 保留，未来可作"不复权价"第三裁判。
 BAR_SOURCES = {
     "eastmoney": (fetch_daily_bars, fetch_hfq_close),
     "sina": (fetch_daily_bars_sina, fetch_hfq_close_sina),

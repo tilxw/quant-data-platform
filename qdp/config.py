@@ -24,6 +24,10 @@ class Settings:
     start_date: date          # 历史数据采集起点
     request_sleep_s: float    # 相邻请求间隔（秒）
     max_fail_ratio: float     # 采集失败比例上限，超过判整体失败
+    gap_warn_ratio: float     # 质检：单只缺口占比升级 WARN 的阈值
+    return_diff_tol: float    # 质检：跨源收益率对拍容差
+    qc_sample_size: int       # 质检：对拍随机抽样只数
+    sentinels: tuple[str, ...]  # 质检：对拍必查的哨兵股
 
 
 def load_settings(config_path: Path | None = None) -> Settings:
@@ -45,10 +49,15 @@ def load_settings(config_path: Path | None = None) -> Settings:
         db_path = PROJECT_ROOT / db_path
 
     ingest = raw["ingest"]
+    quality = raw["quality"]
     return Settings(
         db_path=db_path,
         index_code=raw["universe"]["index_code"],
         start_date=ingest["start_date"],  # tomllib 把裸日期直接解析成 datetime.date
         request_sleep_s=float(ingest["request_sleep_s"]),
         max_fail_ratio=float(ingest["max_fail_ratio"]),
+        gap_warn_ratio=float(quality["gap_warn_ratio"]),
+        return_diff_tol=float(quality["return_diff_tol"]),
+        qc_sample_size=int(quality["sample_size"]),
+        sentinels=tuple(quality["sentinels"]),
     )

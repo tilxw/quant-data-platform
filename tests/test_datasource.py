@@ -68,6 +68,21 @@ def test_normalize_sina_bars_keeps_volume_unit():
     assert _sina_symbol("2") == "sz000002"
 
 
+def test_normalize_tx_bars_converts_volume_to_shares():
+    """腾讯 volume 单位是手，必须 ×100 转股（与新浪相反，别搞混）。"""
+    from qdp.datasource import normalize_tx_bars
+
+    raw = pd.DataFrame({
+        "date": ["2026-07-22"],
+        "open": [10.81], "close": [10.98], "high": [10.98], "low": [10.77],
+        "volume": [1029484.0], "turnover": [0.0053], "amount": [1.12e9],
+    })
+    df = normalize_tx_bars(raw, "1")
+    assert list(df.columns) == BAR_COLUMNS
+    assert df["symbol"].iloc[0] == "000001"
+    assert df["volume"].iloc[0] == 102948400  # 手 → 股
+
+
 def test_call_with_retry_recovers_after_transient_failure():
     calls = {"n": 0}
 

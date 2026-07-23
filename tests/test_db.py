@@ -7,7 +7,7 @@ import pytest
 
 from qdp.db import connect, init_schema
 
-EXPECTED_TABLES = ["adj_factor", "daily_bar", "stock_basic", "trade_calendar"]
+EXPECTED_TABLES = ["adj_factor", "daily_bar", "qc_result", "stock_basic", "trade_calendar"]
 
 
 @pytest.fixture

@@ -29,4 +29,7 @@ pytest                      # 跑单元测试
 
 python scripts/update_data.py --limit 5   # 冒烟：只采成分股前 5 只
 python scripts/update_data.py             # 全量增量更新（幂等，可随时重跑）
+
+python scripts/run_qc.py                  # 数据质检：体检单存 reports/，结果存 qc_result 表
+python scripts/run_qc.py --skip-cross     # 只做离线检查（零网络请求）
 ```
