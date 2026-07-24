@@ -134,6 +134,16 @@ def test_pick_sample_includes_sentinels_and_rotates():
     assert len(got) == 12
 
 
+def test_render_surfaces_error_above_truncation(conn):
+    """回归：ERROR 不得被大量 WARN 挤进 15 条截断区之下。"""
+    seed(conn, "AAAA", DAYS10)
+    items = [qc.QcItem("cross_source", str(i).zfill(6), qc.WARN, None, "对拍失败")
+             for i in range(20)]
+    items.append(qc.QcItem("cross_source", "600221", qc.ERROR, 873.0, "严重分歧"))
+    md = qc.render_markdown(conn, items, datetime(2026, 7, 24, 12, 0), "东财 × 21 只")
+    assert "600221" in md and "严重分歧" in md
+
+
 def test_persist_and_render(conn):
     seed(conn, "AAAA", DAYS10)
     items = [qc.QcItem("freshness", "ALL", qc.ERROR, 5.0, "落后 5 个交易日"),

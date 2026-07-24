@@ -260,6 +260,9 @@ def render_markdown(conn, items: Sequence[QcItem], run_ts: datetime, cross_desc:
             if i.symbol == "ALL":
                 lines.append(f"- 汇总：[{i.level}] {i.detail}")
         bad = [i for i in sub if i.level != INFO and i.symbol != "ALL"]
+        # ERROR 排最前、再按指标降序，然后才截断——2026-07-24 体检单曾把唯一的
+        # ERROR 埋进 32 个 WARN 的折叠区，教训：呈现层截断也能掩盖重点
+        bad.sort(key=lambda i: (i.level != ERROR, -(i.metric or 0.0)))
         for i in bad[:15]:
             lines.append(f"- [{i.level}] {i.symbol}：{i.detail}")
         if len(bad) > 15:
