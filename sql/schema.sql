@@ -45,6 +45,28 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
     PRIMARY KEY (cal_date)
 );
 
+-- 龙虎榜（自写爬虫采集的另类数据）
+-- 主键含 reason：同一只股票同一天可因多个原因分别上榜（实测 2026-07-24 有 10 例），
+-- 只用 (symbol, trade_date) 会把后来的记录当重复丢掉。
+CREATE TABLE IF NOT EXISTS dragon_tiger (
+    symbol          VARCHAR NOT NULL,
+    trade_date      DATE    NOT NULL,
+    reason          VARCHAR NOT NULL,   -- 上榜原因，如"日涨幅偏离值达7%的证券"
+    name            VARCHAR,
+    close_price     DECIMAL(10, 2),
+    change_rate     DOUBLE,             -- 当日涨跌幅（%）
+    net_amt         DECIMAL(18, 2),     -- 龙虎榜净买额（元）
+    buy_amt         DECIMAL(18, 2),
+    sell_amt        DECIMAL(18, 2),
+    deal_amt        DECIMAL(18, 2),     -- 龙虎榜成交总额
+    accum_amount    DECIMAL(18, 2),     -- 该股当日市场总成交额
+    turnover_rate   DOUBLE,             -- 换手率（%）
+    free_market_cap DECIMAL(18, 2),     -- 流通市值
+    interpret       VARCHAR,            -- 解读，如"2家机构买入，成功率35.38%"
+    market          VARCHAR,
+    PRIMARY KEY (symbol, trade_date, reason)
+);
+
 -- 质检结果：每次体检的逐项结论，报告可追溯、调度告警可直接查询
 CREATE TABLE IF NOT EXISTS qc_result (
     run_ts      TIMESTAMP NOT NULL, -- 本次质检时间戳

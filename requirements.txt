@@ -5,3 +5,5 @@ pandas>=2.2
 pytest>=8.0
 # akshare 接口列名随上游变动较频繁，锁定下限为当前验证过的版本
 akshare>=1.18.75
+# 自写爬虫（M4 龙虎榜）直接依赖，不借道 akshare 的间接依赖
+requests>=2.31
