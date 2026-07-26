@@ -67,6 +67,18 @@ CREATE TABLE IF NOT EXISTS dragon_tiger (
     PRIMARY KEY (symbol, trade_date, reason)
 );
 
+-- 因子值（长表：一个因子值一行）
+-- 用户拍板长表而非宽表：加新因子只是多一种 factor_name，表结构零改动。
+-- 时点约定：某行的 trade_date = 算这个值时用到的最后一根 K 线的日期，
+-- 即"该日收盘后才能得到的值"。回测层必须 shift(1) 才能用，防未来函数。
+CREATE TABLE IF NOT EXISTS factor_value (
+    symbol      VARCHAR NOT NULL,
+    trade_date  DATE    NOT NULL,
+    factor_name VARCHAR NOT NULL,
+    value       DOUBLE  NOT NULL,   -- 窗口不足等算不出的日子直接不存行，不存 NULL
+    PRIMARY KEY (symbol, trade_date, factor_name)
+);
+
 -- 质检结果：每次体检的逐项结论，报告可追溯、调度告警可直接查询
 CREATE TABLE IF NOT EXISTS qc_result (
     run_ts      TIMESTAMP NOT NULL, -- 本次质检时间戳
