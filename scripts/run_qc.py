@@ -1,7 +1,7 @@
 """数据质检脚本：离线体检 + 跨源对拍，生成 Markdown 体检单并写入 qc_result 表。
 
 用法（项目根目录，激活 venv）：
-    python scripts/run_qc.py                      # 完整体检（对拍默认东财，抽样+哨兵）
+    python scripts/run_qc.py                      # 完整体检（对拍默认东财：主源已是新浪，东财成了独立源，但目前不可靠）
     python scripts/run_qc.py --skip-cross         # 只做离线检查，零网络请求
     python scripts/run_qc.py --symbols 000001     # 只对拍指定股票
     python scripts/run_qc.py --cross-source sina  # 切换对拍源

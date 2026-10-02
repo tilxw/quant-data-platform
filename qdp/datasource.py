@@ -62,7 +62,7 @@ def normalize_bars(raw: pd.DataFrame, symbol: str) -> pd.DataFrame:
 def compute_hfq_factors(bars: pd.DataFrame, hfq_close: pd.DataFrame) -> pd.DataFrame:
     """后复权因子 = 同源后复权收盘价 ÷ 不复权收盘价（按日对齐）。
 
-    家具级决策：因子从同一数据源（东财）推导而非另接独立因子接口，
+    家具级决策：因子从同一数据源推导（当前主源新浪，2026-10-02 前为东财）而非另接独立因子接口，
     保证价与因子自洽；独立来源（如新浪）的因子留给 M3 做跨源对拍质检，
     独立性正是对拍的价值所在。
     """
@@ -112,7 +112,7 @@ def fetch_hfq_close(symbol: str, start: date, end: date) -> pd.DataFrame:
     return df
 
 
-# ---------------- 备用行情源：新浪（东财被限频时切换） ----------------
+# ---------------- 新浪行情源（2026-10-02 起为主源；此前是东财被限频时的备用源） ----------------
 
 _SINA_BAR_COLUMNS = ["date", "open", "high", "low", "close", "volume", "amount"]
 

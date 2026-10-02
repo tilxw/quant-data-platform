@@ -35,8 +35,10 @@ def main() -> int:
         help="覆盖配置的请求间隔秒数（首次全量灌库建议 1.0，宁慢勿封）",
     )
     parser.add_argument(
-        "--source", choices=sorted(BAR_SOURCES), default="eastmoney",
-        help="行情源（默认东财；被限频时可切 sina）",
+        "--source", choices=sorted(BAR_SOURCES), default="sina",
+        # 2026-10-02 起主源为新浪：东财对连续请求断连，且 7 月下旬起返回的复权数据有误；
+        # 迁移前用影子库全量对账 + 巨潮分红公告核对过（见 qdp/source_diff.py、scripts/verify_exdates.py）
+        help="行情源（默认新浪；东财已不可靠，仅保留做对照）",
     )
     args = parser.parse_args()
 

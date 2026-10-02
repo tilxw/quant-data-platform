@@ -31,8 +31,12 @@ INFO, WARN, ERROR = "INFO", "WARN", "ERROR"
 # 因子回撤阈值定 0.5%：收盘价四舍五入到分会给"因子=后复权价÷收盘价"带来
 # ~0.1% 量级的日间抖动（低价股更明显，2026-07-23 实测 55 只误报），
 # 而真实的因子错误通常是 1%+ 的跳变——0.5% 落在两者之间。
+# 2026-10-02 起回撤直接判 ERROR（原为 WARN）：复权因子只会在除权日上升、绝不会下降，舍入噪声
+# 至多约 0.25%，超过 0.5% 的回撤只能是数据错误。验证：新浪全量库 33.9 万行 0 次触发；
+# 已知有错的东财存档库触发 6 只，6 只均被巨潮分红公告证实有错（漏报为 0，误报为 0）。
+# 起因：东财补进的数据让 000063 因子一夜跌 22%，原规则只报 WARN，闸门没拦
 FACTOR_DROP_TOL = 5e-3
-RETURN_LIMIT = 0.21     # 日收益率粗检上限：主板±10%/创业板±20%，留余量
+RETURN_LIMIT = 0.21     # 日收益率上限：主板±10%/创业板科创板±20%，留余量；超出即 ERROR（因子对时不可能发生）
 SKIP_FIRST_DAYS = 5     # 新股上市初期无涨跌幅限制，前 5 个交易日不做涨跌停粗检
 
 
@@ -122,13 +126,15 @@ def check_factor_and_returns(conn) -> list[QcItem]:
         drop = -g["hfq_factor"].pct_change()
         n_drop = int((drop > FACTOR_DROP_TOL).sum())
         if n_drop:
-            items.append(QcItem("factor_sanity", symbol, WARN, float(n_drop),
-                                f"后复权因子出现 {n_drop} 天相邻日回撤超 {FACTOR_DROP_TOL:.1%}，疑似因子错误"))
+            items.append(QcItem("factor_sanity", symbol, ERROR, float(n_drop),
+                                f"后复权因子出现 {n_drop} 天相邻日回撤超 {FACTOR_DROP_TOL:.1%}"
+                                "——因子只会随分红上升，回撤只能是数据错误"))
         ret = g["hfq_close"].pct_change().iloc[SKIP_FIRST_DAYS:]
         n_ext = int((ret.abs() > RETURN_LIMIT).sum())
         if n_ext:
-            items.append(QcItem("return_sanity", symbol, WARN, float(n_ext),
-                                f"{n_ext} 天后复权日收益率超 ±{RETURN_LIMIT:.0%}，需人工核查"))
+            items.append(QcItem("return_sanity", symbol, ERROR, float(n_ext),
+                                f"{n_ext} 天后复权日收益率超 ±{RETURN_LIMIT:.0%}"
+                                "——超出涨跌停上限，疑似因子漏记除权或数据错误"))
     n_anom = len(items)
     items.insert(0, QcItem("factor_sanity", "ALL", INFO, float(n_anom),
                            f"{df['symbol'].nunique()} 只完成因子/收益体检，异常 {n_anom} 项"))

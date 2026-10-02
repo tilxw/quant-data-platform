@@ -1,4 +1,4 @@
-"""每日流水线入口：行情 → 质检（闸门）→ 龙虎榜 → 因子 → 回测。
+"""每日流水线入口：行情（新浪）→ 质检（闸门）→ 龙虎榜 → 因子 → 回测。
 
 用法（项目根目录，激活 venv）：
     python scripts/run_pipeline.py
@@ -29,7 +29,10 @@ SCRIPTS = PROJECT_ROOT / "scripts"
 
 STEPS = [
     Step("行情采集", SCRIPTS / "update_data.py"),
-    Step("数据质检", SCRIPTS / "run_qc.py"),
+    # 暂时跳过跨源对拍：主源已换成新浪，可唯一的独立源东财既会断连、7 月下旬起返回的数据也有误。
+    # 拿不可靠的源当闸门参照，等于让一个和今天数据无关的检查有权拦下整条流水线（7/24 的两条
+    # ERROR 就是这么来的）。有了可靠的独立源再恢复；需要时可手动 run_qc.py --cross-source 指定源
+    Step("数据质检", SCRIPTS / "run_qc.py", ("--skip-cross",)),
     Step("龙虎榜采集", SCRIPTS / "update_billboard.py"),
     Step("因子计算", SCRIPTS / "compute_factors.py"),
     # 对拍验证的是回测引擎的实现，不是数据：引擎代码不变就不必天天对，改引擎时手动跑

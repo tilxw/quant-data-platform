@@ -67,14 +67,14 @@ def test_freshness_levels(conn):
     assert item.level == qc.INFO and item.metric == 0
 
 
-def test_factor_drop_flagged_but_rounding_noise_ignored(conn):
-    # EEEE：第 8 天因子从 2.0 掉到 1.5（相邻日回撤 25%）→ 报 WARN，且只算 1 天
+def test_factor_drop_is_error_but_rounding_noise_ignored(conn):
+    # EEEE：第 8 天因子从 2.0 掉到 1.5（相邻日回撤 25%）→ ERROR（因子不会下降，回撤只能是数据错），只算 1 天
     seed(conn, "EEEE", DAYS10, factors=[2.0] * 7 + [1.5] + [2.0, 2.0])
     # FFFF：因子有 ±0.2% 抖动（收盘价舍入噪声量级）→ 不报
     seed(conn, "FFFF", DAYS10, factors=[2.0, 2.004] * 5)
     items = qc.check_factor_and_returns(conn)
     got = by_symbol(items, "factor_sanity")
-    assert "EEEE" in got and got["EEEE"].level == qc.WARN and got["EEEE"].metric == 1
+    assert "EEEE" in got and got["EEEE"].level == qc.ERROR and got["EEEE"].metric == 1
     assert "FFFF" not in got
 
 
@@ -84,7 +84,7 @@ def test_extreme_return_flagged_but_new_stock_days_skipped(conn):
     seed(conn, "HHHH", DAYS10, closes=[10.0, 10.0, 14.0] + [14.0] * 7)
     items = qc.check_factor_and_returns(conn)
     got = by_symbol(items, "return_sanity")
-    assert "GGGG" in got and got["GGGG"].metric >= 1
+    assert "GGGG" in got and got["GGGG"].level == qc.ERROR and got["GGGG"].metric >= 1
     assert "HHHH" not in got
 
 
