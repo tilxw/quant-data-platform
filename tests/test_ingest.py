@@ -132,6 +132,28 @@ def test_run_update_stops_when_calendar_fails(conn):
         )
 
 
+def test_run_update_circuit_breaks_early(conn):
+    """熔断要趁早：失败数一超上限立刻停，剩下的股票一个请求都不发。
+    回归：原先要把全部股票试完才判定，2026-10-01 东财封禁时白发约 900 个请求。"""
+    symbols = [f"{i:06d}" for i in range(1, 11)]    # 10 只
+    calls = []
+
+    def dead_bars(symbol, *args):
+        calls.append(symbol)
+        raise ConnectionError("数据源封禁")
+
+    def universe():
+        return pd.DataFrame({"symbol": symbols, "name": symbols, "exchange": ["SZ"] * 10})
+
+    with pytest.raises(IngestError, match="提前熔断"):
+        run_update(
+            conn, default_start=START, sleep_s=0, max_fail_ratio=0.2, end=END,
+            fetch_calendar=fake_calendar, fetch_universe=universe,
+            fetch_bars=dead_bars, fetch_hfq=dead_bars,
+        )
+    assert calls == symbols[:3]   # 上限 10×20%=2，第 3 只失败即超限，后 7 只不再请求
+
+
 def test_run_update_stops_on_too_many_failures(conn):
     """失败比例超限：整体不可信，报错停（不静默给残缺数据）。"""
 

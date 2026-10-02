@@ -153,6 +153,16 @@ def run_update(
             # 单只失败降级：跳过继续跑，收尾统一汇报，绝不静默
             logger.warning("%s 更新失败（重试后仍失败），跳过：%s", sym, exc)
             report.failed.append(sym)
+            # 熔断要趁早：失败数一旦超过上限，本次必判失败、结局已定，立刻停，
+            # 不再对出了问题的数据源接着发请求。2026-10-01 东财封禁时实测：原先要把
+            # 300 只全部试完才判定，白发约 900 个请求、耗时近 1 小时
+            if len(report.failed) > max_fail_ratio * len(todo):
+                logger.error("失败清单（%d 只）：%s", len(report.failed), ", ".join(report.failed))
+                raise IngestError(
+                    f"已失败 {len(report.failed)} 只（共 {len(todo)} 只），超过上限 "
+                    f"{max_fail_ratio:.0%}，提前熔断，剩余 {len(todo) - i} 只未尝试；"
+                    "请检查网络或接口"
+                ) from exc
             # 失败常伴随限频，多歇一会给数据源降温（测试里 sleep_s=0 时不生效）
             time.sleep(10 * sleep_s)
         if i % PROGRESS_EVERY == 0 or i == len(todo):
@@ -162,11 +172,6 @@ def run_update(
             )
         time.sleep(sleep_s)
 
-    if report.failed:
+    if report.failed:  # 走到这里说明失败数没超上限：降级完成，但失败清单必须留痕
         logger.error("失败清单（%d 只）：%s", len(report.failed), ", ".join(report.failed))
-        if len(report.failed) > max_fail_ratio * len(todo):
-            raise IngestError(
-                f"失败 {len(report.failed)}/{len(todo)} 只，超过上限 {max_fail_ratio:.0%}，"
-                "本次更新不可信，请检查网络或接口"
-            )
     return report

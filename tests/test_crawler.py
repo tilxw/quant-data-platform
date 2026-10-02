@@ -173,6 +173,21 @@ def test_update_billboard_degrades_then_circuit_breaks(conn):
                          fetch=lambda d: (_ for _ in ()).throw(ConnectionError("全挂")))
 
 
+def test_update_billboard_circuit_breaks_early(conn):
+    """熔断要趁早：失败天数一超上限立刻停，剩下的交易日一个请求都不发。"""
+    calls = []
+
+    def dead(day):
+        calls.append(day)
+        raise ConnectionError("全挂")
+
+    with pytest.raises(IngestError, match="提前熔断"):
+        update_billboard(conn, default_start=DAYS[0], end=DAYS[-1], sleep_s=0,
+                         max_fail_ratio=0.1, fetch=dead)
+    # 失败数刚超过"天数×10%"就停，不会把全部交易日都试一遍
+    assert len(calls) == int(0.1 * len(DAYS)) + 1 < len(DAYS)
+
+
 def test_forced_start_enables_backfill(conn):
     """回归：库里已有近期数据后，增量起点只会向前；回溯更早历史必须靠显式 start。"""
     idempotent_insert(conn, "dragon_tiger", day_rows(DAYS[8]))

@@ -212,16 +212,18 @@ def update_billboard(
         except Exception as exc:
             logger.warning("%s 龙虎榜抓取失败，跳过：%s", day, exc)
             report.failed.append(str(day))
+            # 熔断要趁早：失败天数一旦超过上限，结局已定，立刻停（同 ingest.run_update）
+            if len(report.failed) > max_fail_ratio * len(days):
+                logger.error("失败日期（%d 天）：%s", len(report.failed), ", ".join(report.failed))
+                raise IngestError(
+                    f"已失败 {len(report.failed)} 天（共 {len(days)} 天），超过上限 "
+                    f"{max_fail_ratio:.0%}，提前熔断，剩余 {len(days) - i} 天未尝试"
+                ) from exc
         if i % 20 == 0 or i == len(days):
             logger.info("进度 %d/%d：累计新增 %d 行，失败 %d 天",
                         i, len(days), report.new_rows, len(report.failed))
         time.sleep(sleep_s)
 
-    if report.failed:
+    if report.failed:  # 走到这里说明失败天数没超上限：降级完成，但失败清单必须留痕
         logger.error("失败日期（%d 天）：%s", len(report.failed), ", ".join(report.failed))
-        if len(report.failed) > max_fail_ratio * len(days):
-            raise IngestError(
-                f"失败 {len(report.failed)}/{len(days)} 天，超过上限 {max_fail_ratio:.0%}，"
-                "本次龙虎榜更新不可信"
-            )
     return report
