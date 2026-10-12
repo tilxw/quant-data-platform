@@ -39,7 +39,7 @@ CASH = "__cash__"   # 现金在内部矩阵里占一列，名字加下划线避�
 
 @dataclass(frozen=True)
 class CostModel:
-    """交易成本参数（用户拍板的 A 股口径）。"""
+    """交易成本参数（A 股口径）。"""
 
     commission: float = 0.00025  # 佣金 万2.5，买卖双边
     stamp_tax: float = 0.001     # 印花税 千1，仅卖出

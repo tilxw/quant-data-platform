@@ -1,7 +1,6 @@
 """日志初始化。
 
-家具级决策：用标准库 logging 而非 loguru——零依赖，且 logging 是
-生产环境的通用语言，面试提到日志默认指它。
+选型：用标准库 logging 而非 loguru——零依赖，且是 Python 生态的通用标准。
 各模块用法：logger = logging.getLogger(__name__)
 """
 

@@ -189,7 +189,7 @@ def update_billboard(
     max_fail_ratio: float = 0.1,
     fetch=fetch_billboard,
 ) -> BillboardReport:
-    """按交易日增量抓取龙虎榜入库。异常分档同 M2：单日失败降级，超限熔断。
+    """按交易日增量抓取龙虎榜入库。异常分档同行情增量入库：单日失败降级，超限熔断。
 
     start 显式指定时强制从该日重采（回溯用）：增量起点只会向前推进，
     库里已有数据后就永远不会自己回头补更早的历史，回溯必须显式声明。

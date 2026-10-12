@@ -19,7 +19,7 @@ from qdp.retry import call_with_retry  # 与自写爬虫共用，此处再导出
 
 logger = logging.getLogger(__name__)
 
-# 数据源全是境内站点（东财/新浪/中证指数），经本地代理（Clash 等）访问时常见
+# 数据源全是境内站点（东财/新浪/中证指数），经本地代理访问时常见
 # 断连抖动；加进 NO_PROXY 让 requests 对这些域名直连，代理留给需要它的流量。
 _DOMESTIC_DOMAINS = "eastmoney.com,sina.com.cn,csindex.com.cn"
 for _var in ("NO_PROXY", "no_proxy"):
@@ -62,9 +62,8 @@ def normalize_bars(raw: pd.DataFrame, symbol: str) -> pd.DataFrame:
 def compute_hfq_factors(bars: pd.DataFrame, hfq_close: pd.DataFrame) -> pd.DataFrame:
     """后复权因子 = 同源后复权收盘价 ÷ 不复权收盘价（按日对齐）。
 
-    家具级决策：因子从同一数据源推导（当前主源新浪，2026-10-02 前为东财）而非另接独立因子接口，
-    保证价与因子自洽；独立来源（如新浪）的因子留给 M3 做跨源对拍质检，
-    独立性正是对拍的价值所在。
+    设计决策：因子从同一数据源推导（当前主源新浪，2026-10-02 前为东财）而非另接独立因子接口，
+    保证价与因子自洽；另一个独立数据源留给跨源对拍质检使用，独立性正是对拍的价值所在。
     """
     merged = bars[["symbol", "trade_date", "close"]].merge(hfq_close, on="trade_date", how="inner")
     merged["hfq_factor"] = merged["hfq_close"] / merged["close"]

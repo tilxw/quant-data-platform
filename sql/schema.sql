@@ -1,7 +1,7 @@
 -- ============================================================
 -- A股量化数据平台 · 建表 DDL
 --
--- 存储方案（用户拍板）：行情表存交易所真实价（不复权），
+-- 存储方案：行情表存交易所真实价（不复权），
 -- 复权因子单独一张表，前/后复权价用时现算。
 -- 全部使用 CREATE TABLE IF NOT EXISTS，脚本可重复执行（幂等）。
 -- ============================================================
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS stock_basic (
 
 -- 日线行情：存不复权的真实价格（能算市值、判断涨跌停）
 -- 主键 (symbol, trade_date)：同一只股票同一天只允许一行，
--- 这是 M2 增量更新"幂等写入"防重复入库的地基。
+-- 这是增量更新"幂等写入"防重复入库的地基。
 CREATE TABLE IF NOT EXISTS daily_bar (
     symbol      VARCHAR NOT NULL,
     trade_date  DATE    NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS adj_factor (
     PRIMARY KEY (symbol, trade_date)
 );
 
--- 交易日历：M3 质检"该有的日期缺没缺"的对照基准
+-- 交易日历：质检"该有的日期缺没缺"的对照基准
 CREATE TABLE IF NOT EXISTS trade_calendar (
     cal_date    DATE    NOT NULL,
     is_open     BOOLEAN NOT NULL,   -- 是否交易日
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS dragon_tiger (
 );
 
 -- 因子值（长表：一个因子值一行）
--- 用户拍板长表而非宽表：加新因子只是多一种 factor_name，表结构零改动。
+-- 采用长表而非宽表：加新因子只是多一种 factor_name，表结构零改动。
 -- 时点约定：某行的 trade_date = 算这个值时用到的最后一根 K 线的日期，
 -- 即"该日收盘后才能得到的值"。回测层必须 shift(1) 才能用，防未来函数。
 CREATE TABLE IF NOT EXISTS factor_value (

@@ -1,6 +1,6 @@
 """因子计算：从行情/龙虎榜面板算出因子值，向量化实现。
 
-三条贯穿全模块的约定（用户拍板）：
+三条贯穿全模块的约定：
 
 1. **时点语义**：factor_value 里某行的 trade_date，指"用到该日收盘为止的数据
    算出的值"。它在当日收盘后才可得，所以回测层必须 shift(1) 才能用来决定次日
@@ -80,7 +80,7 @@ def compute_factors(panel: pd.DataFrame) -> pd.DataFrame:
 
     # Amihud：单位成交额（亿元）推动的价格变动幅度，越大说明越"不抗砸"
     illiq_daily = df["ret"].abs() / (df["amount"] / 1e8)
-    illiq_daily = illiq_daily.replace([float("inf"), float("-inf")], pd.NA)  # 成交额为0的停牌半日
+    illiq_daily = illiq_daily.replace([float("inf"), float("-inf")], pd.NA)  # 防御：成交额为 0 会除出 inf（实测库中没有这样的行，数据源停牌日不出 K 线）
     df["illiq_daily"] = pd.to_numeric(illiq_daily, errors="coerce")
     df["illiq20"] = df.groupby("symbol", sort=False)["illiq_daily"].transform(
         lambda s: s.rolling(ILLIQ_WINDOW).mean()
